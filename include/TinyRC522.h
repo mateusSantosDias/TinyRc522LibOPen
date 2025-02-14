@@ -1,178 +1,97 @@
-#ifndef _TINY_RC522_H_
-#define _TINY_RC522_H_
-     /*Defines do Módulo, Inclusões e typedefs*/
-     
-     // Tag maximum size
-     #define TAG_MAX_SIZE              752             // 47 blocks of 16 bytes
+/*
+ * Projeto: Sistema de Captação de impacto.
+ * Desenvolvedor: Mateus Santos Dias
+ * Versão: V.01
+ * 
+*/
+#ifndef TAG_DRIVER_H
+#define	TAG_DRIVER_H
+    /*Defines do Módulo, Inclusões e typedefs*/
+    
+    #include<libopencm3/stm32/spi.h>
+    #include<libopencm3/stm32/rcc.h>
+    #include<libopencm3/stm32/usart.h>
+    #include<libopencm3/stm32/gpio.h>
+    #include<RC522.h>
 
-     // Antenna gain
-     #define ANTENNA_GAIN_OFF          0x00            // Antenna off
-     #define ANTENNA_GAIN_18_DB        0x28            // 18 dB
-     #define ANTENNA_GAIN_23_DB        0x38            // 23 dB
-     #define ANTENNA_GAIN_33_DB        0x48            // 33 dB
-     #define ANTENNA_GAIN_38_DB        0x58            // 38 dB
-     #define ANTENNA_GAIN_43_DB        0x68            // 43 dB
-     #define ANTENNA_GAIN_48_DB        0x78            // 48 dB
-
-     // Block size
-     #define RC522_BLOCK_SIZE          18             // 16 bytes block + 2 bytes CRC_A
-
-     // RC522 registers
-     #define CommandReg                (0x01<<1)
-     #define ComIrqReg                 (0x04<<1)
-     #define ErrorReg                  (0x06<<1)
-     #define Status2Reg                (0x08<<1)
-     #define FIFODataReg               (0x09<<1)
-     #define FIFOLevelReg              (0x0A<<1)
-     #define ControlReg                (0x0C<<1)
-     #define BitFramingReg             (0x0D<<1)
-     #define CollReg                   (0x0E<<1)
-     #define ModeReg                   (0x11<<1)
-     #define TxModeReg                 (0x12<<1)
-     #define RxModeReg                 (0x13<<1)
-     #define TxControlReg              (0x14<<1)
-     #define TxASKReg                  (0x15<<1)
-     #define RFCfgReg                  (0x26<<1)
-     #define TModeReg                  (0x2A<<1)
-     #define TPrescalerReg             (0x2B<<1)
-     #define TReloadRegH               (0x2C<<1)
-     #define TReloadRegL               (0x2D<<1)
-     #define VersionReg                (0x37<<1)
-
-     #include<libopencm3/stm32/spi.h>
-     #include<libopencm3/stm32/gpio.h>
-     #include<libopencm3/stm32/rcc.h>
+    // Firmware data for self-test
+// Reference values based on firmware version
+// Hint: if needed, you can remove unused self-test data to save flash memory
+//
+// Version 0.0 (0x90)
+// Philips Semiconductors; Preliminary Specification Revision 2.0 - 01 August 2005; 16.1 Sefttest
+const uint8_t MFRC522_firmware_referenceV0_0[] = {
+	0x00, 0x87, 0x98, 0x0f, 0x49, 0xFF, 0x07, 0x19,
+	0xBF, 0x22, 0x30, 0x49, 0x59, 0x63, 0xAD, 0xCA,
+	0x7F, 0xE3, 0x4E, 0x03, 0x5C, 0x4E, 0x49, 0x50,
+	0x47, 0x9A, 0x37, 0x61, 0xE7, 0xE2, 0xC6, 0x2E,
+	0x75, 0x5A, 0xED, 0x04, 0x3D, 0x02, 0x4B, 0x78,
+	0x32, 0xFF, 0x58, 0x3B, 0x7C, 0xE9, 0x00, 0x94,
+	0xB4, 0x4A, 0x59, 0x5B, 0xFD, 0xC9, 0x29, 0xDF,
+	0x35, 0x96, 0x98, 0x9E, 0x4F, 0x30, 0x32, 0x8D
+};
+// Version 1.0 (0x91)
+// NXP Semiconductors; Rev. 3.8 - 17 September 2014; 16.1.1 Self test
+const uint8_t MFRC522_firmware_referenceV1_0[] = {
+	0x00, 0xC6, 0x37, 0xD5, 0x32, 0xB7, 0x57, 0x5C,
+	0xC2, 0xD8, 0x7C, 0x4D, 0xD9, 0x70, 0xC7, 0x73,
+	0x10, 0xE6, 0xD2, 0xAA, 0x5E, 0xA1, 0x3E, 0x5A,
+	0x14, 0xAF, 0x30, 0x61, 0xC9, 0x70, 0xDB, 0x2E,
+	0x64, 0x22, 0x72, 0xB5, 0xBD, 0x65, 0xF4, 0xEC,
+	0x22, 0xBC, 0xD3, 0x72, 0x35, 0xCD, 0xAA, 0x41,
+	0x1F, 0xA7, 0xF3, 0x53, 0x14, 0xDE, 0x7E, 0x02,
+	0xD9, 0x0F, 0xB5, 0x5E, 0x25, 0x1D, 0x29, 0x79
+};
+// Version 2.0 (0x92)
+// NXP Semiconductors; Rev. 3.8 - 17 September 2014; 16.1.1 Self test
+const uint8_t MFRC522_firmware_referenceV2_0[] = {
+	0x00, 0xEB, 0x66, 0xBA, 0x57, 0xBF, 0x23, 0x95,
+	0xD0, 0xE3, 0x0D, 0x3D, 0x27, 0x89, 0x5C, 0xDE,
+	0x9D, 0x3B, 0xA7, 0x00, 0x21, 0x5B, 0x89, 0x82,
+	0x51, 0x3A, 0xEB, 0x02, 0x0C, 0xA5, 0x00, 0x49,
+	0x7C, 0x84, 0x4D, 0xB3, 0xCC, 0xD2, 0x1B, 0x81,
+	0x5D, 0x48, 0x76, 0xD5, 0x71, 0x61, 0x21, 0xA9,
+	0x86, 0x96, 0x83, 0x38, 0xCF, 0x9D, 0x5B, 0x6D,
+	0xDC, 0x15, 0xBA, 0x3E, 0x7D, 0x95, 0x3B, 0x2F
+};
+// Clone
+// Fudan Semiconductor FM17522 (0x88)
+const uint8_t FM17522_firmware_reference[]    = {
+	0x00, 0xD6, 0x78, 0x8C, 0xE2, 0xAA, 0x0C, 0x18,
+	0x2A, 0xB8, 0x7A, 0x7F, 0xD3, 0x6A, 0xCF, 0x0B,
+	0xB1, 0x37, 0x63, 0x4B, 0x69, 0xAE, 0x91, 0xC7,
+	0xC3, 0x97, 0xAE, 0x77, 0xF4, 0x37, 0xD7, 0x9B,
+	0x7C, 0xF5, 0x3C, 0x11, 0x8F, 0x15, 0xC3, 0xD7,
+	0xC1, 0x5B, 0x00, 0x2A, 0xD0, 0x75, 0xDE, 0x9E,
+	0x51, 0x64, 0xAB, 0x3E, 0xE9, 0x15, 0xB5, 0xAB,
+	0x56, 0x9A, 0x98, 0x82, 0x26, 0xEA, 0x2A, 0x62
+};
 
 #endif
-     /*Protóripos de Função e classes*/
+    /*Protóripos de Função*/
+    class TinyRC522{
 
-     // RC522 class declaration
-     class RC522;
+    private:
+        
 
+        void setup_spi();
+    public:
 
-     // Mifare 1K S50 (4-bytes UID) class definition
-     class Tag
-     {
-         // Friend class access
-         friend class RC522;
+        TinyRC522();
+        
+        void init();
+        void write_register(uint8_t reg, uint8_t value);
+        uint8_t read_register(uint8_t reg);
 
-
-
-         // Private attributes
-         private:
-
-         // RC522 module pointer
-         RC522* m_p_rc522;
-
-         // UID
-         uint8_t m_uid[7];
-         uint8_t m_uid_size;
-
-
-
-         // Public functions
-         public:
-
-         // Constructor
-         Tag(RC522* p_rc522);
-
-         // Get UID
-         uint32_t get_uid();
-
-         // Set/remove protection
-         bool set_protection(uint8_t* new_key,uint8_t* key);
-         bool remove_protection(uint8_t* key);
-
-         // Read/write data
-         bool read(uint8_t* buffer,uint16_t buffer_size,uint8_t* key);
-         bool write(uint8_t* buffer,uint16_t buffer_size,uint8_t* key);
-
-         // Release
-         bool release();
-
-
-
-         // Private functions
-         private:
-
-         // Initialize
-         void initialize();
-
-         // Add UID byte
-         void add_uid_byte(uint8_t uid_byte);
-};
-
-
-
-// RC522 class definition
-class RC522
-{
-     // Friend class access
-     friend class Tag;
-
-
-
-     // Private attributes
-     private:
-
-     // Tag
-     Tag m_tag{this};
-
-
-
-     // Public functions
-     public:
-
-     // Initialize
-     void initialize();
-
-     // Set antenna gain
-     void set_antenna_gain(uint8_t gain);
-
-     // Get tag
-     Tag* get_tag();
-
-     // Get module version
-     uint8_t get_version();
-
-     void setup_spi();
-
-
-
-     // Private functions
-     private:
-
-     // Authenticate
-     bool authenticate(uint8_t* buffer,uint8_t buffer_size);
-
-     // Read/write data
-     bool read(uint8_t* buffer,uint8_t& buffer_size,bool control_crc_a=true);
-     bool write(uint8_t* buffer,uint8_t buffer_size,uint8_t last_byte_size=0,bool add_crc_a=true);
-
-     // Calculate CRC_A
-     void calculate_crc_a(uint8_t* buffer,uint8_t buffer_size,uint8_t* result);
- 
-     // SPI Set/clear register bits
-     void spi_set_register_bits(uint8_t address,uint8_t mask);
-     void spi_clear_register_bits(uint8_t address,uint8_t mask);
-
-     // SPI Read register
-     uint16_t spi_read_register(uint8_t address);
-     void spi_read_register(uint8_t address,uint8_t* buffer,uint8_t buffer_size);
-
-     // SPI Write register
-     void spi_write_register(uint8_t address,uint8_t value);
-     void spi_write_register(uint8_t address,uint8_t* buffer,uint8_t buffer_size);
-
-     // SPI Select/release device
-     void spi_select_device();
-     void spi_release_device();
-};
-
-
-#ifdef DEF_TINY_RC522
-    #define TINY_RC522 extern
+        uint8_t get_version(); 
+        void antenna_on();
+        
+    };
+    
+#ifdef DEF_TAG_DVR
+    #define TAG_DVR extern
 #else
-    #define TINY_RC522
-#endif	/* DRIVER_LCD_H */
+    #define TAG_DVR
+#endif	/* TAG_DRIVER_H */
     /*Variáveis Globais*/
+ 

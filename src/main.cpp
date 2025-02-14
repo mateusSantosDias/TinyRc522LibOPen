@@ -10,24 +10,20 @@
 
 typedef struct {
 
-    RC522 g_rc522;
+    TinyRC522 g_rc522;
     uint32_t usuart_i;
+    uint32_t value;
 }nfc;
 
 nfc nfc_rc522;
 nfc *ptr_nfc_rc522 = &nfc_rc522;
 
-RC522 g_rc522;
 
 void vApplicationStackOverflowHook(
 	TaskHandle_t xTask __attribute__((unused)),
     char *pcTaskName __attribute__((unused))) {
 
 	while(1);
-}
-
-void dump_tag_data(uint8_t* buffer, uint16_t buffer_size)
-{
 }
 
 static void my_usart_print_int(uint32_t usart, uint32_t value)
@@ -49,16 +45,14 @@ static void my_usart_print_int(uint32_t usart, uint32_t value)
 	for (i = nr_digits; i >= 0; i--){
         usart_send(usart, buffer[i]);
   
-        //vTaskDelay(pdMS_TO_TICKS(10));
-         for (int i = 0; i < 800000; i++) __asm__("nop");
+        vTaskDelay(pdMS_TO_TICKS(10));
     }	
 }
 
 void usuart_setup(){
     
     
-    rcc_periph_clock_enable(RCC_USART1);
-    
+    rcc_periph_clock_enable(RCC_USART1);   
     rcc_periph_clock_enable(RCC_GPIOA);
     
     gpio_set_mode(
@@ -111,43 +105,24 @@ void test_nfc(void *args){
 
     while (1){
       
-      Tag* p_tag = rc522->g_rc522.get_tag();
-      my_usart_print_int(rc522->usuart_i, spi_read(SPI1));
-      
-      if(p_tag){
-
-        my_usart_print_int(rc522->usuart_i, p_tag->get_uid());
-        uint8_t data_buffer[TAG_SIZE];
-        
-        p_tag->release();
-      }
+       rc522->value = rc522->g_rc522.get_version();
+       my_usart_print_int(rc522->usuart_i, rc522->g_rc522.get_version());
+       vTaskDelay(pdMS_TO_TICKS(500));
     }    
-
-    vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 int main(){
 
     rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
-
-    rcc_periph_clock_enable(RCC_GPIOC);
-    gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
-    gpio_set(GPIOC, GPIO13);
     
     usuart_setup();
     
-    g_rc522.initialize();
-    g_rc522.set_antenna_gain(ANTENNA_GAIN_18_DB);
-    
+    ptr_nfc_rc522 -> g_rc522.init();
+    ptr_nfc_rc522 -> usuart_i = USART1;
 
-    while(1){
-      
-         Tag* p_tag=g_rc522.get_tag();
-         if(p_tag){
+    xTaskCreate(test_nfc, "NfcTestHandle", 100,(void*) ptr_nfc_rc522, 2, NULL);
+    vTaskStartScheduler();
 
-            my_usart_print_int(USART1, p_tag->get_uid());
-
-         }
-    }
+    while(1);
     return 0;
 }
