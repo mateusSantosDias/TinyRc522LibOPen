@@ -16,4 +16,3 @@
 #endif /* TAG_DRIVER_H */
        /*Variáveis Globais*/
 
-uint32_t ptr_usart;

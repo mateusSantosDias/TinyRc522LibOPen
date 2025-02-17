@@ -1,5 +1,7 @@
-#include <TinyRC522.h>
 #include <libopencm3/stm32/usart.h>
+#include <libopencm3/stm32/timer.h>
+
+#include <TinyRC522.h>
 #include <Printf.h>
 
 #include <FreeRTOS.h>
@@ -27,7 +29,7 @@ void vApplicationStackOverflowHook(
         ;
 }
 
-void usuart_setup()
+static void usuart_setup()
 {
 
     rcc_periph_clock_enable(RCC_USART1);
@@ -56,27 +58,33 @@ void usuart_setup()
     usart_enable(USART1);
 }
 
-void test_nfc(void *args)
+static void test_nfc(void *args)
 {
 
     nfc *rc522;
     rc522 = (nfc *)args;
+    rc522->value = rc522->g_rc522.get_version();
     while (1)
     {
 
-        printf("hello mundo");
+        printf("value: %i\n", rc522->g_rc522.get_version());
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
-    vTaskDelay(pdMS_TO_TICKS(500));
+}
+
+static void clock_setup()
+{
+    rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
+
+    rcc_periph_clock_enable(RCC_USART1);
+    rcc_periph_clock_enable(RCC_GPIOA);
 }
 
 int main()
 {
-
-    rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
+    clock_setup();
 
     usuart_setup();
-
-    ptr_usart = USART1;
 
     ptr_nfc_rc522->g_rc522.init();
     ptr_nfc_rc522->usuart_i = USART1;

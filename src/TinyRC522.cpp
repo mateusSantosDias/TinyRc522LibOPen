@@ -23,6 +23,7 @@ void TinyRC522::init(){
     write_register(TxASKReg, 0x40);
     write_register(ModeReg, 0x3D);
     antenna_on();
+    
 
 }
 
@@ -57,12 +58,8 @@ void TinyRC522::write_register(uint8_t reg, uint8_t value){
       
       reg &= 0x7E;
       
-      gpio_set(GPIOB, GPIO12);
       spi_xfer(SPI2, reg);
-
       spi_xfer(SPI2, value);
-      gpio_clear(GPIOB, GPIO12);
-
 }
 
 uint8_t TinyRC522::read_register(uint8_t reg){
