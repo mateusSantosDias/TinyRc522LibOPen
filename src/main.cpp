@@ -3,22 +3,14 @@
 
 #include <TinyRC522.h>
 #include <Printf.h>
+#include <Errors.h>
 
 #include <FreeRTOS.h>
 #include <task.h>
 
-#define TAG_SIZE 64
+#define LED GPIO13
 
-typedef struct
-{
-
-    TinyRC522 g_rc522;
-    uint32_t usuart_i;
-    uint32_t value;
-} nfc;
-
-nfc nfc_rc522;
-nfc *ptr_nfc_rc522 = &nfc_rc522;
+TinyRC522 rc522;
 
 void vApplicationStackOverflowHook(
     TaskHandle_t xTask __attribute__((unused)),
@@ -31,10 +23,6 @@ void vApplicationStackOverflowHook(
 
 static void usuart_setup()
 {
-
-    rcc_periph_clock_enable(RCC_USART1);
-    rcc_periph_clock_enable(RCC_GPIOA);
-
     gpio_set_mode(
         GPIOA,
         GPIO_MODE_OUTPUT_50_MHZ,
@@ -58,16 +46,13 @@ static void usuart_setup()
     usart_enable(USART1);
 }
 
-static void test_nfc(void *args)
+static void Nfc_tester(void *args)
 {
 
-    nfc *rc522;
-    rc522 = (nfc *)args;
-    rc522->value = rc522->g_rc522.get_version();
     while (1)
-    {
-
-        printf("value: %i\n", rc522->g_rc522.get_version());
+    {   
+        gpio_toggle(GPIOC, LED);
+        printf("RC522 Version: 0x%X\n", rc522.get_version());
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
@@ -77,19 +62,24 @@ static void clock_setup()
     rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
 
     rcc_periph_clock_enable(RCC_USART1);
+    rcc_periph_clock_enable(RCC_SPI1);
+
     rcc_periph_clock_enable(RCC_GPIOA);
+    rcc_periph_clock_enable(RCC_GPIOB);
+    rcc_periph_clock_enable(RCC_GPIOC);
 }
 
 int main()
 {
     clock_setup();
-
     usuart_setup();
+    
+    gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ,
+                  GPIO_CNF_OUTPUT_PUSHPULL, LED);
 
-    ptr_nfc_rc522->g_rc522.init();
-    ptr_nfc_rc522->usuart_i = USART1;
+    rc522.init();
 
-    xTaskCreate(test_nfc, "NfcTestHandle", 100, (void *)ptr_nfc_rc522, 2, NULL);
+    xTaskCreate(Nfc_tester, "NfcTester", 100, NULL, 2, NULL);
     vTaskStartScheduler();
 
     while (1)
